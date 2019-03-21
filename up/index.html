@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>上传文件</title>
+    <style media="screen">
+      .progress{
+        width: 50%;
+        height: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-top: 10px;
+        position: relative;
+      }
+      .progress>span{
+        display: inline-block;
+        position: absolute;
+        border-radius: 4px;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 0;
+        background-color: rgb(98, 230, 74);
+        transition: width 0.3s ease-out;
+      }
+    </style>
+  </head>
+  <body>
+    <input id="file" type="file" multiple>
+    <button id="upload">上传</button>
+    <span id="status"></span>
+    <div class="progress">
+      <span></span>
+    </div>
+    <span id="percent"></span>
+    <script type="text/javascript">
+      var http = function (option) {
+        function getBody (xhr) {
+          var text = xhr.responseText || xhr.response
+          if (!text) {
+            return text
+          }
+
+          try {
+            return JSON.parse(text)
+          } catch (err) {
+            return text
+          }
+        }
+
+        var xhr = new XMLHttpRequest();
+        if(option.beforeSend instanceof Function) {
+          if (option.beforeSend(xhr) === false) {
+            return false
+          }
+        }
+
+        xhr.onreadystatechange = function () {
+          if (xhr.status === 200) {
+            if (xhr.readyState === 4) {
+              option.onSuccess(getBody(xhr))
+            }
+          }
+        }
+        xhr.onerror = function (err) {
+          option.onError(err)
+        }
+
+        xhr.open(option.type, option.url, true)
+        if (xhr.upload) {
+          xhr.upload.onprogress = function (event) {
+            if (event.total > 0) {
+              event.percent = event.loaded / event.total * 100;
+            }
+            if (option.onProgress instanceof Function) {
+              option.onProgress(event)
+            }
+          }
+        }
+        const headers = option.headers || {}
+        for (var item in headers) {
+          xhr.setRequestHeader(item, headers[item])
+        }
+
+        xhr.send(option.data)
+      }
+      document.getElementById('file').onchange = function() {
+        document.querySelector('.progress span').style.width = 0;
+        document.querySelector('#percent').innerHTML = "";
+      }
+      document.getElementById('upload').onclick = function () {
+        var fileList = document.getElementById('file').files, formData = new FormData();
+        if (fileList.length == 0) {
+          alert(`未选择任何文件！`);
+        }
+        else {
+          Array.prototype.forEach.call(fileList, function (file) { 
+            formData.append(file.name, file) 
+          });
+          http({
+            type: 'POST',
+            url: '/upload',
+            data: formData,
+            onProgress: function (event) {
+              document.querySelector('.progress span').style.width = event.percent + '%';
+              document.querySelector('#percent').innerHTML = (event.percent).toFixed(1) + '%';
+              document.querySelector('#status').innerHTML = "上传中......";
+            },
+            onSuccess: function (data) {
+              document.querySelector('#status').innerHTML = "上传成功！";
+              setTimeout(() => {
+                document.querySelector('#status').innerHTML = "";
+              }, 900);
+            },
+            onError: function (err) {
+              alert(err);
+            }
+          });
+        }
+      }
+    </script>
+  </body>
+</html>
